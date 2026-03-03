@@ -46,7 +46,7 @@ async function checkSite(url) {
 
   } catch (err) {
     if (siteStatus[url] !== "down") {
-      await sendTelegram(`🚨 ${url} erişilemiyor!`);
+      await sendTelegram(`🚨 ${url} erişilemiyor!!`);
     }
     siteStatus[url] = "down";
   }
@@ -77,3 +77,4 @@ http.createServer((req, res) => {
 }).listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
+
