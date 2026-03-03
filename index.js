@@ -1,12 +1,18 @@
 import fetch from "node-fetch";
+import http from "http";
 
+// ENV
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_IDS = process.env.CHAT_IDS.split(",");
 const URLS = process.env.URLS.split(",");
+const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL || "120000");
+const TIMEOUT = parseInt(process.env.TIMEOUT || "10000");
+const PORT = process.env.PORT || 3000;
 
-// Site durum hafızası
+// Hafıza (spam önleme)
 const siteStatus = {};
 
+// Telegram mesaj gönderme
 async function sendTelegram(message) {
   for (const chatId of CHAT_IDS) {
     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -20,9 +26,14 @@ async function sendTelegram(message) {
   }
 }
 
+// Site kontrol
 async function checkSite(url) {
   try {
-    const res = await fetch(url, { timeout: 10000 });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT);
+
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
 
     if (res.status >= 200 && res.status < 400) {
       if (siteStatus[url] === "down") {
@@ -35,14 +46,15 @@ async function checkSite(url) {
 
   } catch (err) {
     if (siteStatus[url] !== "down") {
-      await sendTelegram(`🚨 ${url} şu anda erişilemiyor!`);
+      await sendTelegram(`🚨 ${url} erişilemiyor!`);
     }
-    siteStatus[url] = "down";
+      siteStatus[url] = "down";
   }
 }
 
+// Monitor döngüsü
 async function monitor() {
-  console.log("Kontrol başlatıldı...");
+  console.log("Kontrol başladı...");
   for (const url of URLS) {
     await checkSite(url.trim());
   }
@@ -50,6 +62,12 @@ async function monitor() {
 
 // İlk çalıştırma
 monitor();
+setInterval(monitor, CHECK_INTERVAL);
 
-// 2 dakikada bir kontrol
-setInterval(monitor, 120000);
+// 👇 Render için HTTP server
+http.createServer((req, res) => {
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end("Monitoring service is running.");
+}).listen(PORT, () => {
+  console.log("Server running on port", PORT);
+});
