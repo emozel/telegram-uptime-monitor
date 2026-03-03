@@ -5,7 +5,7 @@ import http from "http";
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_IDS = process.env.CHAT_IDS.split(",");
 const URLS = process.env.URLS.split(",");
-const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL || "120000");
+const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL || "600000"); // 10 dakika
 const TIMEOUT = parseInt(process.env.TIMEOUT || "10000");
 const PORT = process.env.PORT || 3000;
 
@@ -40,42 +40,38 @@ async function checkSite(url) {
         await sendTelegram(`✅ ${url} tekrar aktif oldu.`);
       }
       siteStatus[url] = "up";
+
     } else {
       throw new Error("Status not OK");
     }
 
   } catch (err) {
-    if (siteStatus[url] !== "down") {
-      await sendTelegram(`🚨 ${url} erişilemiyor!!`);
-    }
+    // Sürekli mesaj: her kontrolünde düşerse gönder
+    await sendTelegram(`🚨 ${url} erişilemiyor!`);
     siteStatus[url] = "down";
   }
 }
 
 // Monitor döngüsü
 async function monitor() {
-  console.log("...Kontrol başladı...");
+  console.log("Kontrol başladı...");
   for (const url of URLS) {
     await checkSite(url.trim());
   }
 }
 
-// 👇 Başlangıçta Telegram mesajı
-sendTelegram("🚀 Monitoring Service başladı!!").then(() => {
-  console.log("Başlangıç mesajı gönderildi.");
-  // Deploy sonrası hemen bir test çalıştır
+// Başlangıçta Telegram mesajı
+sendTelegram("🚀 Monitoring Service başladı!").then(() => {
   monitor();
 });
 
-// 2 dakikada bir kontrol
+// 10 dakikada bir kontrol
 setInterval(monitor, CHECK_INTERVAL);
 
-// 👇 Render Web Service için HTTP server
+// Render Web Service için HTTP server
 http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/plain" });
   res.end("Monitoring service is running.");
 }).listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
-
-
