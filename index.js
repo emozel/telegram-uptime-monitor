@@ -2,44 +2,54 @@ import fetch from "node-fetch";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_IDS = process.env.CHAT_IDS.split(",");
-const URL = process.env.URL;
+const URLS = process.env.URLS.split(",");
 
-let failCount = 0;
-let isDown = false;
+// Site durum hafızası
+const siteStatus = {};
 
-async function sendMessage(text) {
-  for (let chatId of CHAT_IDS) {
+async function sendTelegram(message) {
+  for (const chatId of CHAT_IDS) {
     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId.trim(),
-        text
+        text: message
       })
     });
   }
 }
 
-async function checkSite() {
+async function checkSite(url) {
   try {
-    const res = await fetch(URL);
-    if (!res.ok) throw new Error();
+    const res = await fetch(url, { timeout: 10000 });
 
-    if (isDown) {
-      await sendMessage("✅ SITE TEKRAR AKTİF");
-      isDown = false;
+    if (res.status >= 200 && res.status < 400) {
+      if (siteStatus[url] === "down") {
+        await sendTelegram(`✅ ${url} tekrar aktif oldu.`);
+      }
+      siteStatus[url] = "up";
+    } else {
+      throw new Error("Status not OK");
     }
 
-    failCount = 0;
-
-  } catch {
-    failCount++;
-    if (failCount >= 3 && !isDown) {
-      await sendMessage("🚨 SITE DOWN!");
-      isDown = true;
+  } catch (err) {
+    if (siteStatus[url] !== "down") {
+      await sendTelegram(`🚨 ${url} şu anda erişilemiyor!`);
     }
+    siteStatus[url] = "down";
   }
 }
 
-setInterval(checkSite, 60000);
-console.log("Monitoring başladı...");
+async function monitor() {
+  console.log("Kontrol başlatıldı...");
+  for (const url of URLS) {
+    await checkSite(url.trim());
+  }
+}
+
+// İlk çalıştırma
+monitor();
+
+// 2 dakikada bir kontrol
+setInterval(monitor, 120000);
