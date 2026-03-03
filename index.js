@@ -9,7 +9,7 @@ const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL || "120000");
 const TIMEOUT = parseInt(process.env.TIMEOUT || "10000");
 const PORT = process.env.PORT || 3000;
 
-// Hafıza (spam önleme)
+// Site durum hafızası
 const siteStatus = {};
 
 // Telegram mesaj gönderme
@@ -48,7 +48,7 @@ async function checkSite(url) {
     if (siteStatus[url] !== "down") {
       await sendTelegram(`🚨 ${url} erişilemiyor!`);
     }
-      siteStatus[url] = "down";
+    siteStatus[url] = "down";
   }
 }
 
@@ -60,11 +60,17 @@ async function monitor() {
   }
 }
 
-// İlk çalıştırma
-monitor();
+// 👇 Başlangıçta Telegram mesajı
+sendTelegram("🚀 Monitoring Service başladı!").then(() => {
+  console.log("Başlangıç mesajı gönderildi.");
+  // Deploy sonrası hemen bir test çalıştır
+  monitor();
+});
+
+// 2 dakikada bir kontrol
 setInterval(monitor, CHECK_INTERVAL);
 
-// 👇 Render için HTTP server
+// 👇 Render Web Service için HTTP server
 http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/plain" });
   res.end("Monitoring service is running.");
