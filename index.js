@@ -54,14 +54,14 @@ async function checkSite(url) {
 
 // Monitor döngüsü
 async function monitor() {
-  console.log("Kontrol başladı...");
+  console.log("...Kontrol başladı...");
   for (const url of URLS) {
     await checkSite(url.trim());
   }
 }
 
 // 👇 Başlangıçta Telegram mesajı
-sendTelegram("🚀 Monitoring Service başladı!").then(() => {
+sendTelegram("🚀 Monitoring Service başladı!!").then(() => {
   console.log("Başlangıç mesajı gönderildi.");
   // Deploy sonrası hemen bir test çalıştır
   monitor();
@@ -77,4 +77,5 @@ http.createServer((req, res) => {
 }).listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
+
 
